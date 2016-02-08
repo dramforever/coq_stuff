@@ -17,7 +17,7 @@ Ltac de_iso := match goal with
                  | _ => idtac
                end.
 
-Ltac mk_iso := simple refine (mk_iso _ _ _ _ _ _).
+Ltac mk_iso := simple refine (ex_intro _ _ (ex_intro _ _ (conj _ _))).
 
 Ltac simpl_goal := match goal with
                      | [ H : unit |- _ ] => destruct H; simpl_goal
@@ -25,14 +25,6 @@ Ltac simpl_goal := match goal with
                    end.
 
 Ltac work_iso := dintuition; simpl; simpl_goal; congruence.
-
-Ltac mk_iso :=
-  match goal with
-      |- iso ?A ?B =>
-      refine (@ex_intro (A -> B) _ (ltac:(intuition))
-                        (@ex_intro (B -> A) _ (ltac:(intuition))
-                                   (conj _ _)))
-  end.
 
 Ltac iso := dintuition; de_iso; mk_iso; work_iso.
 
