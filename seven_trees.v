@@ -1,8 +1,19 @@
-(* coq 8.5 *)
 Require Export Setoid Ring Ring_theory.
 
+Open Scope type_scope.
+
+Inductive sum (A B : Set) : Set :=
+  inl (x : A) | inr (x : B).
+
+Inductive prod (A B : Set) : Set :=
+  pair (x : A) (y : B).
+
+Infix "+" := sum (at level 50, left associativity) : type_scope.
+Infix "*" := prod (at level 40, left associativity) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+
 (* iso A B: Types A and B are isomorphic *)
-Definition iso (A B : Type) : Prop :=
+Definition iso (A B : Set) : Prop :=
   exists (fw : A -> B) (bw : B -> A),
     (forall x, fw (bw x) = x) /\ (forall x, bw (fw x) = x).
 
@@ -29,14 +40,14 @@ Ltac work_iso := dintuition; simpl; simpl_goal; congruence.
 Ltac iso := dintuition; de_iso; mk_iso; work_iso.
 
 (* The actual relations *)
-Add Parametric Relation : Type iso
+Add Parametric Relation : Set iso
     reflexivity proved by ltac:(unfold Reflexive; iso)
     symmetry proved by ltac:(unfold Symmetric; iso)
     transitivity proved by ltac:(unfold Transitive; iso)
       as iso_rel.
 
 Add Parametric Morphism : sum
-    with signature iso ==> iso ==> iso as sum_mor_pp.
+    with signature iso ==> iso ==> iso as sum_mor.
   iso. Qed.
 
 Add Parametric Morphism : prod
@@ -46,88 +57,86 @@ Add Parametric Morphism : prod
 Definition iso_ring_theory : semi_ring_theory Empty_set unit sum prod iso.
   iso. Qed.
 
-(* This one does not work, but I don't know why *)
 Add Ring iso_ring : iso_ring_theory.
-(* Error: cannot find setoid relation *)
 
-Inductive tree := leaf | branch (l r : tree).
+Inductive tree : Set := mk_tree (x : unit + tree * tree).
+
+Definition get_tree (t : tree) :=
+  match t with mk_tree x => x end.
+
+Hint Constructors tree.
+Hint Resolve get_tree.
 
 Lemma iso_tree : iso tree (unit + tree * tree).
-  mk_iso.
-  - intro t.
-    exact match t with
-            | leaf => inl tt
-            | branch lc rc => inr (lc, rc)
-          end.
-  - intro m.
-    exact match m with
-            | inl tt => leaf
-            | inr (lc, rc) => branch lc rc
-          end.
-  - repeat simpl_goal.
-  - repeat simpl_goal.
-    destruct x; reflexivity.
+  exists get_tree.
+  exists mk_tree.
+  intuition.
+  destruct x.
+  reflexivity.
 Qed.
+
+Hint Resolve iso_tree.
+
+Fixpoint exps (T : Set) (n : nat) : Set :=
+  match n with
+    | 0 => unit
+    | S n' => (exps T n') * T
+  end.
+
+Infix "^" := exps (at level 30, right associativity). 
 
 Lemma tree_split : forall n, iso (tree^S n) (tree^n + tree^S (S n)).
+  induction n.
+  simpl in *.
+  ring_simplify.
+  auto.
+  simpl in *.
+  rewrite IHn at 1.
+  ring.
 Qed.
 
-Ltac spl := eapply tree_split.
+Ltac split_tree n :=
+  match n with
+      S ?n' => rewrite (tree_split n')
+  end.
 
-(* 
-  7
-= 6 8
-= 6 9 7
-= 5 7 9 7
-= 5 8 7
-= 4 6 8 7
-= 4 7 7
-= 3 5 7 7
-= 3 6 7
-= 2 4 6 7
-= 2 5 7
-= 1 3 5 7
-= 1 3 6
-= 1 2 4 6
-= 1 2 5
-= 1 1 3 5
-= 1 1 4
-= 1 0 2 4
-= 1 0 3
-= 0 2
-= 1 
+Ltac combine_tree n :=
+  match n with
+      S ?n' => rewrite <- (tree_split n')
+  end.
 
-*)
-
+Lemma tree_lower_3 : forall n, iso (tree^S n + tree^(4 + n))
+                                   (tree^n     + tree^(3 + n)).
+  intro. split_tree (S n).
+  transitivity (tree^S (S n) + tree^(4+n) + tree^n).
+  - ring.
+  - unfold plus.
+    combine_tree (S (S (S n))).
+    ring.
+Qed.
 
 Theorem seven_trees : iso (tree^7) tree.
 Proof.
-  tr.
-  { spl. }
-  tr.
-  { snd. spl. }
-  tr.
-  { snd. swp. }
-  tr.
-  { asc. }
-  do 4 (tr; [ do 2 fst; spl |];
-        tr; [ fst; sym; eapply sum_assoc |];
-        tr; [ fst; snd; sym; eapply tree_split |]).
-  
-  tr; [ sym; eapply sum_assoc |].
-  tr; [ snd; sym; eapply tree_split |].
-  tr; [ fst; spl |].
-
-  do 3 (tr; [ fst; snd; spl |];
-        tr; [ fst; asc |];
-        tr; [ sym; eapply sum_assoc |];
-        tr; [ snd; sym; eapply tree_split |]).
-
-  tr; [ fst; swp |].
-  tr; [ sym; eapply sum_assoc |].
-  tr; [ snd; sym; eapply tree_split |].
-  tr; [ sym; eapply tree_split |].
+  split_tree 7.
+  split_tree 6.
+  transitivity (tree^5 + tree^8 + tree^7).
+  { ring. }
+  do 3 rewrite tree_lower_3.
+  unfold plus.
+  split_tree 2.
+  transitivity (tree^5 + tree^7 + tree^1 + tree^3).
+  { ring. }
+  combine_tree 6.
+  transitivity (tree^3 + tree^6 + tree^1).
+  { ring. }
+  do 3 rewrite tree_lower_3.
+  unfold plus.
+  transitivity (tree^1 + tree^3 + tree^0).
+  { ring. }
+  combine_tree 2.
+  transitivity (tree^0 + tree^2).
+  { ring. }
+  combine_tree 1.
   simpl.
-  tr; [ swp |].
-  unt.
+  ring.
 Qed.
