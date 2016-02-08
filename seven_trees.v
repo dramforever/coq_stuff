@@ -15,7 +15,7 @@ Ltac de_iso := match goal with
                  | _ => idtac
                end.
 
-Ltac mk_iso := refine {| fw := _ |}.
+Ltac mk_iso := simple refine (mk_iso _ _ _ _ _ _).
 
 Ltac simpl_goal := match goal with
                      | [ H : Empty_set |- _ ] => destruct H
