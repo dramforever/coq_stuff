@@ -1,8 +1,6 @@
 (* coq 8.5 *)
 Require Export Setoid Ring Ring_theory.
 
-Ltac dintuition := intuition.
-
 (* iso A B: Types A and B are isomorphic *)
 Definition iso (A B : Type) : Prop :=
   exists (fw : A -> B) (bw : B -> A),
@@ -46,16 +44,7 @@ Add Parametric Relation : Type iso
       as iso_rel.
 
 Add Parametric Morphism : sum
-    with signature iso ++> iso ++> iso as sum_mor_pp.
-  iso. Qed.
-Add Parametric Morphism : sum
-    with signature iso ++> iso --> iso as sum_mor_pn.
-  iso. Qed.
-Add Parametric Morphism : sum
-    with signature iso --> iso ++> iso as sum_mor_np.
-  iso. Qed.
-Add Parametric Morphism : sum
-    with signature iso --> iso --> iso as sum_mor_nn.
+    with signature iso ==> iso ==> iso as sum_mor_pp.
   iso. Qed.
 
 Add Parametric Morphism : prod
