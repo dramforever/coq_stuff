@@ -1,159 +1,95 @@
-Require Export Program.
+(* coq 8.5 *)
+Require Export Setoid Ring Ring_theory.
 
-Record iso (A B : Type) :=
-  mk_iso
-    {
-      fw : A -> B;
-      bw : B -> A;
+Ltac dintuition := intuition.
 
-      fw_bw: forall x, fw (bw x) = x;
-      bw_fw: forall x, bw (fw x) = x
-    }.
+(* iso A B: Types A and B are isomorphic *)
+Definition iso (A B : Type) : Prop :=
+  exists (fw : A -> B) (bw : B -> A),
+    (forall x, fw (bw x) = x) /\ (forall x, bw (fw x) = x).
 
+(* Tactic iso for automagically solving (some) iso A B goals *)
 Ltac de_iso := match goal with
-                 | [ H : iso _ _ |- _ ] => destruct H; de_iso
+                 | [ H : iso _ _ |- _ ] =>
+                   let fw := fresh "fw" in
+                   let bw := fresh "bw" in
+                   let fw_bw := fresh "fw_bw" in
+                   let bw_fw := fresh "bw_fw" in
+                   destruct H as [fw [bw [fw_bw bw_fw]]]; de_iso
                  | _ => idtac
                end.
 
 Ltac mk_iso := simple refine (mk_iso _ _ _ _ _ _).
 
 Ltac simpl_goal := match goal with
-                     | [ H : Empty_set |- _ ] => destruct H
-                     | [ H : () |- _ ] => destruct H; simpl_goal
+                     | [ H : unit |- _ ] => destruct H; simpl_goal
                      | _ => dintuition
                    end.
 
-Ltac work_iso := intuition; simpl; simpl_goal; congruence.
+Ltac work_iso := dintuition; simpl; simpl_goal; congruence.
 
-Ltac iso := intuition; de_iso; mk_iso; work_iso.
-
-Definition iso_refl {A}: iso A A.
-  iso. Defined.
-
-Definition iso_trans {A} {B} {C}: iso A B -> iso B C -> iso A C.
-  iso. Defined.
-
-Definition iso_sym {A} {B}: iso A B -> iso B A.
-  iso. Defined.
-
-Definition prod_unit {A}: iso (A * ()) A.
-  iso. Defined.
-
-Definition prod_swap {A} {B}: iso (A * B) (B * A).
-  iso. Defined.
-
-Definition prod_fst {A} {B} {C}: iso A B -> iso (A * C) (B * C).
-  iso. Defined.
-
-Definition prod_snd {A} {B} {C}: iso A B -> iso (C * A) (C * B).
-  iso. Defined.
-
-Definition prod_assoc {A} {B} {C}: iso (A * (B * C)) (A * B * C).
-  iso. Defined.
-
-Definition sum_swap {A} {B}: iso (A + B) (B + A).
-  iso. Defined.
-
-Definition sum_fst {A} {B} {C}: iso A B -> iso (A + C) (B + C).
-  iso. Defined.
-
-Definition sum_snd {A} {B} {C}: iso A B -> iso (C + A) (C + B).
-  iso. Defined.
-
-Definition sum_empty {A} : iso (A + Empty_set) A.
-  iso. Defined.
-
-Definition sum_assoc {A} {B} {C}: iso (A + (B + C)) (A + B + C).
-  iso. Defined.
-
-Definition prod_sum {A} {B} {C}: iso (C * (A + B)) (C * A + C * B).
-  iso. Defined.
-
-Inductive tree : Type :=
-  leaf | branch (lc rc : tree).
-
-Definition iso_tree : iso tree (() + (tree * tree)).
-  refine
-    {| fw := fun tr => match tr with
-                         | leaf => inl tt
-                         | branch lc rc => inr (pair lc rc)
-                       end;
-
-       bw := fun x => match x with
-                        | inl tt => leaf
-                        | inr (pair lc rc) => branch lc rc
-                      end
-    |}; dintuition; simpl_goal.
-  
-  - destruct x; reflexivity.
-Defined.
-
-Ltac tr := eapply iso_trans.
-
-Ltac fst := match goal with
-              | [ |- iso (_ * _) _ ] => eapply prod_fst
-              | [ |- iso (_ + _) _ ]=> eapply sum_fst
-            end.
-
-Ltac snd := match goal with
-              | [ |- iso (_ * _) _ ] => eapply prod_snd
-              | [ |- iso (_ + _) _ ]=> eapply sum_snd
-            end.
-
-Ltac swp := match goal with
-              | [ |- iso (_ * _) _ ] => eapply prod_swap
-              | [ |- iso (_ + _) _ ]=> eapply sum_swap
-            end.
-
-Ltac asc := match goal with
-              | [ |- iso (_ * _) _ ] => eapply prod_assoc
-              | [ |- iso (_ + _) _ ]=> eapply sum_assoc
-            end.
-
-Ltac unt := match goal with
-              | [ |- iso (_ * _) _ ] => eapply prod_unit
-              | [ |- iso (_ + _) _ ]=> eapply sum_empty
-            end.
-
-Ltac sym := eapply iso_sym.
-
-Ltac ist := eapply iso_tree.
-Ltac dst := eapply prod_sum.
-
-Fixpoint texp (T : Type) (n : nat) : Type :=
-  match n with
-    | 0 => unit
-    | S n' => (texp T n') * T
+Ltac mk_iso :=
+  match goal with
+      |- iso ?A ?B =>
+      refine (@ex_intro (A -> B) _ (ltac:(intuition))
+                        (@ex_intro (B -> A) _ (ltac:(intuition))
+                                   (conj _ _)))
   end.
 
-Infix "^" := texp (at level 30, right associativity).
+Ltac iso := dintuition; de_iso; mk_iso; work_iso.
+
+(* The actual relations *)
+Add Parametric Relation : Type iso
+    reflexivity proved by ltac:(unfold Reflexive; iso)
+    symmetry proved by ltac:(unfold Symmetric; iso)
+    transitivity proved by ltac:(unfold Transitive; iso)
+      as iso_rel.
+
+Add Parametric Morphism : sum
+    with signature iso ++> iso ++> iso as sum_mor_pp.
+  iso. Qed.
+Add Parametric Morphism : sum
+    with signature iso ++> iso --> iso as sum_mor_pn.
+  iso. Qed.
+Add Parametric Morphism : sum
+    with signature iso --> iso ++> iso as sum_mor_np.
+  iso. Qed.
+Add Parametric Morphism : sum
+    with signature iso --> iso --> iso as sum_mor_nn.
+  iso. Qed.
+
+Add Parametric Morphism : prod
+    with signature iso ==> iso ==> iso as prod_mor.
+  iso. Qed.
+
+Definition iso_ring_theory : semi_ring_theory Empty_set unit sum prod iso.
+  iso. Qed.
+
+(* This one does not work, but I don't know why *)
+Add Ring iso_ring : iso_ring_theory.
+(* Error: cannot find setoid relation *)
+
+Inductive tree := leaf | branch (l r : tree).
+
+Lemma iso_tree : iso tree (unit + tree * tree).
+  mk_iso.
+  - intro t.
+    exact match t with
+            | leaf => inl tt
+            | branch lc rc => inr (lc, rc)
+          end.
+  - intro m.
+    exact match m with
+            | inl tt => leaf
+            | inr (lc, rc) => branch lc rc
+          end.
+  - repeat simpl_goal.
+  - repeat simpl_goal.
+    destruct x; reflexivity.
+Qed.
 
 Lemma tree_split : forall n, iso (tree^S n) (tree^n + tree^S (S n)).
-  induction n; simpl in *.
-  - tr.
-    { swp. }
-    tr.
-    { unt. }
-    sym.
-    tr.
-    { snd. fst. swp. }
-    tr.
-    { snd. fst. unt. }
-    sym.
-    exact iso_tree.
-  - sym.
-    tr.
-    { fst. swp. }
-    tr.
-    { snd. swp. }
-    tr.
-    { sym. dst. }
-    sym.
-    tr.
-    { swp. }
-    snd.
-    assumption.
-Defined.
+Qed.
 
 Ltac spl := eapply tree_split.
 
@@ -213,4 +149,4 @@ Proof.
   simpl.
   tr; [ swp |].
   unt.
-Defined.
+Qed.
