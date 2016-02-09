@@ -5,7 +5,6 @@
 #include <vector>
 #include <algorithm>
 #include <queue>
-#include <list>
 #include <iterator>
 
 struct state
@@ -53,7 +52,7 @@ struct state_hasher
 
 struct state_trans
 {
-  int dir, num;
+  int num;
   state prev;
 };
 
@@ -61,28 +60,19 @@ struct state_trans
 std::unordered_map<state, state_trans, state_hasher> vis[2];
 std::priority_queue<state> more[2];
 
-void pst(const state_trans &x)
-{
-  std::cout << x.num << (x.dir ? "+" : "-") << " ";
-  for(auto a : x.prev.vec)
-    std::cout << a << " ";
-  std::cout << std::endl;
-}
-
 template<typename It>
-void print_sol(int dir, const state &x, It it)
+void output_sol(int dir, const state &x, It it)
 {
   for(auto nxt = vis[dir].find(x);
       nxt != vis[dir].end();
       nxt = vis[dir].find(nxt->second.prev))
     {
-      *it = nxt->second;
+      *it = nxt->second.num;
     }
 }
 
 void pass(int dir)
 {
-  std::fputc('>', stderr);
   state x = more[dir].top();
   more[dir].pop();
   
@@ -100,18 +90,34 @@ void pass(int dir)
 
 	  if(vis[! dir].count(news) >= 1)
 	    {
-	      std::list<state_trans> lst;
-	      std::cerr << "\nFound.\n";
-	      print_sol(dir, x, front_inserter(lst));
-	      lst.push_back((state_trans){dir, x.vec[i], news});
-	      print_sol(!dir, news, back_inserter(lst));
-	      for(auto x : lst)
-		pst(x);
+	      std::cerr << "- Found.\n";
+	      if(!dir) std::cout << "symmetry.\n";
+	      
+	      std::vector<int> S1;
+	      output_sol(dir, x, back_inserter(S1));
+	      
+	      for(auto i = S1.rbegin(); i != S1.rend(); i ++)
+		{
+		  std::cout << "split_tree " << *i << ".\n";
+		}
+	      std::cout << "split_tree " << x.vec[i] << ".\n";
+	      
+	      std::cout << "symmetry.\n";
+
+	      std::vector<int> S2;
+	      output_sol(!dir, news, back_inserter(S2));
+		  
+	      for(auto i = S2.rbegin(); i != S2.rend(); i ++)
+		{
+		  std::cout << "split_tree " << *i << ".\n";
+		}
+	      std::cout << "ring.\n";
+
 	      exit(0);
 	    }
 	  else if(vis[dir].count(news) == 0)
 	    {
-	      vis[dir].insert(std::make_pair(news, (state_trans){dir, x.vec[i], x}));
+	      vis[dir].insert(std::make_pair(news, (state_trans){x.vec[i], x}));
 	      more[dir].push(news);
 	    }
 	}

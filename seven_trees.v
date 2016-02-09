@@ -97,12 +97,12 @@ Qed.
 
 Ltac split_tree n :=
   match n with
-      S ?n' => rewrite (tree_split n')
+      S ?n' => rewrite (tree_split n') at 1
   end.
 
 Ltac combine_tree n :=
   match n with
-      S ?n' => rewrite <- (tree_split n')
+      S ?n' => rewrite <- (tree_split n') at 1
   end.
 
 Lemma tree_lower_3 : forall n, iso (tree^S n + tree^(4 + n))
@@ -115,28 +115,7 @@ Lemma tree_lower_3 : forall n, iso (tree^S n + tree^(4 + n))
     ring.
 Qed.
 
-Theorem seven_trees : iso (tree^7) tree.
+Theorem seven_trees : iso (tree^7) (tree^1).
 Proof.
-  split_tree 7.
-  split_tree 6.
-  transitivity (tree^5 + tree^8 + tree^7).
-  { ring. }
-  do 3 rewrite tree_lower_3.
-  unfold plus.
-  split_tree 2.
-  transitivity (tree^5 + tree^7 + tree^1 + tree^3).
-  { ring. }
-  combine_tree 6.
-  transitivity (tree^3 + tree^6 + tree^1).
-  { ring. }
-  do 3 rewrite tree_lower_3.
-  unfold plus.
-  transitivity (tree^1 + tree^3 + tree^0).
-  { ring. }
-  combine_tree 2.
-  transitivity (tree^0 + tree^2).
-  { ring. }
-  combine_tree 1.
-  simpl.
-  ring.
+  Load "seven_search".
 Qed.
