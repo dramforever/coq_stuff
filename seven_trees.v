@@ -86,12 +86,9 @@ Fixpoint exps (T : Set) (n : nat) : Set :=
 Infix "^" := exps (at level 30, right associativity). 
 
 Lemma tree_split : forall n, iso (tree^S n) (tree^n + tree^S (S n)).
-  induction n.
-  simpl in *.
-  ring_simplify.
-  auto.
-  simpl in *.
-  rewrite IHn at 1.
+  intro.
+  simpl.
+  rewrite iso_tree at 2.
   ring.
 Qed.
 
@@ -99,21 +96,6 @@ Ltac split_tree n :=
   match n with
       S ?n' => rewrite (tree_split n') at 1
   end.
-
-Ltac combine_tree n :=
-  match n with
-      S ?n' => rewrite <- (tree_split n') at 1
-  end.
-
-Lemma tree_lower_3 : forall n, iso (tree^S n + tree^(4 + n))
-                                   (tree^n     + tree^(3 + n)).
-  intro. split_tree (S n).
-  transitivity (tree^S (S n) + tree^(4+n) + tree^n).
-  - ring.
-  - unfold plus.
-    combine_tree (S (S (S n))).
-    ring.
-Qed.
 
 Theorem seven_trees : iso (tree^7) (tree^1).
 Proof.
