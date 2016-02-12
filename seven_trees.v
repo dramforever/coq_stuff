@@ -17,27 +17,19 @@ Definition iso (A B : Set) : Prop :=
   exists (fw : A -> B) (bw : B -> A),
     (forall x, fw (bw x) = x) /\ (forall x, bw (fw x) = x).
 
+Lemma unit_unique : forall x : unit, x = tt.
+  destruct x; reflexivity.
+Qed.
+  
 (* Tactic iso for automagically solving (some) iso A B goals *)
-Ltac de_iso := match goal with
-                 | [ H : iso _ _ |- _ ] =>
-                   let fw := fresh "fw" in
-                   let bw := fresh "bw" in
-                   let fw_bw := fresh "fw_bw" in
-                   let bw_fw := fresh "bw_fw" in
-                   destruct H as [fw [bw [fw_bw bw_fw]]]; de_iso
-                 | _ => idtac
-               end.
-
-Ltac mk_iso := simple refine (ex_intro _ _ (ex_intro _ _ (conj _ _))).
-
-Ltac simpl_goal := match goal with
-                     | [ H : unit |- _ ] => destruct H; simpl_goal
-                     | _ => dintuition
-                   end.
-
-Ltac work_iso := dintuition; simpl; simpl_goal; congruence.
-
-Ltac iso := dintuition; de_iso; mk_iso; work_iso.
+Ltac prepare_iso := pose proof unit_unique; unfold iso in *.
+Ltac mk_iso := simple refine (ex_intro _ _ (ex_intro _ _ _)).
+Ltac work_iso := intuition; intuition; simpl in *; congruence.
+Ltac simpl_exists := match goal with
+                       | H : exists _, _ |- _ => destruct H; simpl_exists
+                       | |- _ => intuition
+                     end.
+Ltac iso := prepare_iso; intuition; simpl_exists; mk_iso; work_iso.
 
 (* The actual relations *)
 Add Parametric Relation : Set iso
@@ -55,7 +47,7 @@ Add Parametric Morphism : prod
   iso. Qed.
 
 Definition iso_ring_theory : semi_ring_theory Empty_set unit sum prod iso.
-  iso. Qed.
+  split; iso. Qed.
 
 Add Ring iso_ring : iso_ring_theory.
 
