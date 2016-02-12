@@ -23,8 +23,8 @@ Qed.
   
 (* Tactic iso for automagically solving (some) iso A B goals *)
 Ltac prepare_iso := pose proof unit_unique; unfold iso in *.
-Ltac mk_iso := simple refine (ex_intro _ _ (ex_intro _ _ _)).
-Ltac work_iso := intuition; intuition; simpl in *; congruence.
+Ltac mk_iso := simple refine (ex_intro _ _ (ex_intro _ _ (conj _ _))).
+Ltac work_iso := intuition; simpl in *; congruence.
 Ltac simpl_exists := match goal with
                        | H : exists _, _ |- _ => destruct H; simpl_exists
                        | |- _ => intuition
